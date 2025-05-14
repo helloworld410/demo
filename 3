@@ -1,0 +1,158 @@
+import java.util.*;
+
+public class Main {
+    static class Literal {
+        String literal;
+        int address;
+
+        Literal(String literal) {
+            this.literal = literal;
+            this.address = -1; // Address assigned in Pass 2
+        }
+
+        @Override
+        public String toString() {
+            return String.format("%-10s %s", literal, (address == -1 ? "Not Assigned" : address));
+        }
+    }
+
+    public static void main(String[] args) {
+        // Updated Assembly code input
+        String[] code = {
+            "START 100",
+            "READ A",
+            "READ B",
+            "MOVER AREG, ='50'",
+            "MOVER BREG, ='60'",
+            "ADD AREG, BREG",
+            "LOOP MOVER CREG, A",
+            "ADD CREG, ='10'",
+            "COMP CREG, B",
+            "BC LT, LOOP",
+            "NEXT SUB AREG, ='10'",
+            "COMP AREG, B",
+            "BC GT, NEXT",
+            "STOP",
+            "A DS 1",
+            "B DS 1",
+            "END"
+        };
+
+        List<Literal> literalTable = new ArrayList<>();
+        Map<String, Integer> literalMap = new HashMap<>();
+        int lc = 0; // Location counter
+
+        // PASS 1: Collect literals
+        for (String line : code) {
+            line = line.trim();
+            if (line.isEmpty()) continue;
+
+            String[] parts = line.split("\\s+|,\\s*");
+
+            if (parts[0].equals("START")) {
+                lc = Integer.parseInt(parts[1]);
+                continue;
+            }
+
+            // Check for literal usage
+            for (String part : parts) {
+                if (part.startsWith("='") && part.endsWith("'")) {
+                    if (!literalMap.containsKey(part)) {
+                        literalMap.put(part, literalTable.size());
+                        literalTable.add(new Literal(part));
+                    }
+                }
+            }
+
+            // Assume each instruction takes 1 memory word
+            lc++;
+        }
+
+        // PASS 2: Assign addresses to literals (after END or LTORG)
+        int literalStartAddress = lc;
+        for (int i = 0; i < literalTable.size(); i++) {
+            literalTable.get(i).address = literalStartAddress++;
+        }
+
+        // Print Literal Table
+        System.out.println("Literal Table:");
+        System.out.printf("%-10s %s\n", "Literal", "Address");
+        System.out.println("---------------------");
+
+        for (Literal lit : literalTable) {
+            System.out.println(lit);
+        }
+    }
+}
+
+----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+import re
+
+# Input code from the question (A)3
+code = [
+    "START 100",
+    "READ A",
+    "MOVER AREG, ='1'",
+    "MOVEM AREG, B",
+    "MOVER BREG, ='6'",
+    "ADD AREG, BREG",
+    "COMP AREG, A",
+    "BC GT, LAST",
+    "LTORG",
+    "NEXT SUB AREG, ='1'",
+    "MOVER CREG, B",
+    "ADD CREG, ='8'",
+    "MOVEM CREG, B",
+    "PRINT B",
+    "LAST STOP",
+    "A DS 1",
+    "B DS 1",
+    "END"
+]
+
+# Track literals, pool table and their addresses
+literal_table = []
+pool_table = [0]  # First pool always starts at index 0
+literal_address_map = {}
+loc_counter = 0
+
+for line in code:
+    line = line.strip()
+    if not line:
+        continue
+
+    parts = line.split()
+
+    if parts[0] == "START":
+        loc_counter = int(parts[1])
+        continue
+
+    # Extract literals using regex
+    literals = re.findall(r"='(\d+)'", line)
+    for lit in literals:
+        literal_token = f"='{lit}'"
+        if literal_token not in literal_table:
+            literal_table.append(literal_token)
+
+    # Handle LTORG or END: Assign addresses to current pool literals
+    if parts[0] in ["LTORG", "END"]:
+        for lit in literal_table:
+            if lit not in literal_address_map:
+                literal_address_map[lit] = loc_counter
+                loc_counter += 1
+        if parts[0] == "LTORG":
+            pool_table.append(len(literal_table))
+    else:
+        loc_counter += 1
+
+# Print Literal Table
+print("Literal Table")
+print("Index\tLiteral\tAddress")
+for idx, lit in enumerate(literal_table):
+    print(f"{idx}\t{lit}\t{literal_address_map[lit]}")
+
+# Print Pool Table
+print("\nPool Table")
+print("Pool#\tStart Index")
+for idx, val in enumerate(pool_table):
+    print(f"{idx + 1}\t{val}")
