@@ -1,0 +1,39 @@
+%{
+#include <stdio.h>
+%}
+
+%%
+
+"you"|"it"                      { printf("%s : Pronoun\n", yytext); }
+"the"                           { printf("%s : Article\n", yytext); }
+"light"|"give"|"kill"|"needs"    { printf("%s : Verb\n", yytext); }
+"cigarette"|"thing"|"power"      { printf("%s : Noun\n", yytext); }
+"that"|"if"                      { printf("%s : Conjunction\n", yytext); }
+"never"                          { printf("%s : Adverb\n", yytext); }
+[.,]                             { }
+[ \t\n]+                         { }
+[A-Za-z]+                        { printf("%s : Unknown Word\n", yytext); }
+
+%%
+
+int main() {
+    printf("Enter the sentence:\n");
+    yylex();
+    return 0;
+}
+
+int yywrap() {
+    return 1;
+}
+
+-------------------------------------------------------------------------------------------
+LEX COMMANDS
+flex inputfile.l(filename)
+gcc lex.yy.c
+./a.out
+
+YACC COMMANDS
+flex inputfile.l(filename)
+yacc -d inputfile.y(filename)
+gcc lex.yy.c y.tab.c
+./a.out
