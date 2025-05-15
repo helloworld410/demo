@@ -1,0 +1,38 @@
+%{
+#include <stdio.h>
+%}
+
+%%
+"Dread"                 { printf("%s - Verb\n", yytext); }
+"Run"                   { printf("%s - Verb\n", yytext); }
+"arrives"               { printf("%s - Verb\n", yytext); }
+"Destiny"               { printf("%s - Noun\n", yytext); }
+"it"                    { printf("%s - Pronoun\n", yytext); }
+"from"                  { printf("%s - Preposition\n", yytext); }
+"the"                   { printf("%s - Determiner\n", yytext); }
+"same"                  { printf("%s - Adjective\n", yytext); }
+[.!?\n]                 { /* Ignore punctuation and newline */ }
+[ \t]+                  { /* Ignore whitespace */ }
+.                       { printf("%s - Unknown\n", yytext); }
+%%
+
+int main() {
+    yylex();
+    return 0;
+}
+
+int yywrap() {
+    return 1;
+}
+
+-----------------------------------------------------------------------------------------
+LEX COMMANDS
+flex inputfile.l(filename)
+gcc lex.yy.c
+./a.out
+
+YACC COMMANDS
+flex inputfile.l(filename)
+yacc -d inputfile.y(filename)
+gcc lex.yy.c y.tab.c
+./a.out
