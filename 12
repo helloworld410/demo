@@ -1,0 +1,215 @@
+import ast
+
+class ThreeAddressCodeGenerator(ast.NodeVisitor):
+    def __init__(self):
+        self.temp_count = 1
+        self.code = []
+    
+    def new_temp(self):
+        temp = f"t{self.temp_count}"
+        self.temp_count += 1
+        return temp
+    
+    def visit_BinOp(self, node):
+        left = self.visit(node.left)
+        right = self.visit(node.right)
+        temp = self.new_temp()
+        op = self.get_operator(node.op)
+        self.code.append(f"{temp} = {left} {op} {right}")
+        return temp
+    
+    def visit_Name(self, node):
+        return node.id
+
+    def visit_Num(self, node):
+        return str(node.n)
+    
+    def visit_Constant(self, node):  # for Python 3.8+
+        return str(node.value)
+    
+    def get_operator(self, op):
+        if isinstance(op, ast.Add): return '+'
+        if isinstance(op, ast.Sub): return '-'
+        if isinstance(op, ast.Mult): return '*'
+        if isinstance(op, ast.Div): return '/'
+        raise Exception(f"Unsupported operator: {type(op)}")
+
+    def generate(self, expr):
+        tree = ast.parse(expr, mode='exec')
+        assign = tree.body[0]
+        if not isinstance(assign, ast.Assign):
+            raise Exception("Only assignment expressions are allowed.")
+        
+        target = assign.targets[0].id
+        value = self.visit(assign.value)
+        self.code.append(f"{target} = {value}")
+        return self.code
+
+# Main function
+def main():
+    expr = input("Enter expression (e.g., w = u*u - u*v + v*v): ")
+    tac_generator = ThreeAddressCodeGenerator()
+    try:
+        tac = tac_generator.generate(expr)
+        print("\nThree Address Code:")
+        for line in tac:
+            print(line)
+    except Exception as e:
+        print(f"Error: {e}")
+
+main()
+
+----------------------------------------------------------------------------------------------------
+
+import re
+
+def generate_TAC(expression):
+    tac_code = []
+    # tokenize variables/operators/parentheses
+    tokens = re.findall(r'[a-zA-Z_][a-zA-Z0-9_]*|[-+*/^=()]', expression)
+    
+    temp_counter = 1
+    def new_temp():
+        nonlocal temp_counter
+        name = f"t{temp_counter}"
+        temp_counter += 1
+        return name
+
+    # we'll convert infix → postfix (shunting-yard) to respect precedence, then eval postfix
+    prec = {'^': 4, '*': 3, '/': 3, '+': 2, '-': 2}
+    output_q = []
+    op_stack = []
+
+    for tok in tokens:
+        if re.fullmatch(r'[a-zA-Z_][a-zA-Z0-9_]*', tok):
+            output_q.append(tok)
+        elif tok in prec:
+            while (op_stack and op_stack[-1] in prec and
+                   ((prec[tok] <= prec[op_stack[-1]] and tok != '^') or
+                    (prec[tok] < prec[op_stack[-1]] and tok == '^'))):
+                output_q.append(op_stack.pop())
+            op_stack.append(tok)
+        elif tok == '(':
+            op_stack.append(tok)
+        elif tok == ')':
+            while op_stack and op_stack[-1] != '(':
+                output_q.append(op_stack.pop())
+            op_stack.pop()  # pop '('
+        elif tok == '=':
+            # treat assignment as lowest-precedence operator
+            while op_stack:
+                output_q.append(op_stack.pop())
+            op_stack.append(tok)
+
+    while op_stack:
+        output_q.append(op_stack.pop())
+
+    # now evaluate postfix to TAC
+    stack = []
+    for tok in output_q:
+        if re.fullmatch(r'[a-zA-Z_][a-zA-Z0-9_]*', tok):
+            stack.append(tok)
+        elif tok in prec or tok == '=':
+            if tok == '=':
+                rhs = stack.pop()
+                lhs = stack.pop()
+                tac_code.append(f"{lhs} = {rhs}")
+            else:
+                r = stack.pop()
+                l = stack.pop()
+                t = new_temp()
+                tac_code.append(f"{t} = {l} {tok} {r}")
+                stack.append(t)
+
+    return tac_code
+
+if __name__ == "__main__":
+    expr = input("Enter an expression (e.g. a = f ^ r - u * f * t - p): ").strip()
+    print("\nGenerated Three-Address Code:")
+    for line in generate_TAC(expr):
+        print(line)
+ ------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+import java.util.*;
+
+public class demo {
+
+    static int tempVarCount = 1;
+
+    public static void main(String[] args) {
+        Scanner scanner = new Scanner(System.in);
+        System.out.println("Enter an arithmetic expression (e.g., a=b+c*d): ");
+        String input = scanner.nextLine().replaceAll("\\s+", "");  // Remove spaces
+
+        if (!input.contains("=")) {
+            System.out.println("Invalid expression. Must be of form a=b+c...");
+            return;
+        }
+
+        // Split LHS and RHS
+        String[] parts = input.split("=");
+        String lhs = parts[0];
+        String rhs = parts[1];
+
+        // Generate TAC
+        List<String> tac = generateThreeAddressCode(rhs);
+
+        // Assign the result to the left-hand side variable
+        tac.add(lhs + " = " + "t" + tempVarCount);
+
+        // Print TAC
+        System.out.println("\nThree Address Code:");
+        for (String line : tac) {
+            System.out.println(line);
+        }
+
+        scanner.close();
+    }
+
+    // Method to generate TAC from an expression using operator precedence
+    private static List<String> generateThreeAddressCode(String expr) {
+        List<String> code = new ArrayList<>();
+        Stack<String> operands = new Stack<>();
+        Stack<Character> operators = new Stack<>();
+
+        for (int i = 0; i < expr.length(); i++) {
+            char ch = expr.charAt(i);
+
+            if (Character.isLetterOrDigit(ch)) {
+                operands.push(String.valueOf(ch));
+            } else if (isOperator(ch)) {
+                while (!operators.isEmpty() && precedence(operators.peek()) >= precedence(ch)) {
+                    String op2 = operands.pop();
+                    String op1 = operands.pop();
+                    char op = operators.pop();
+                    String temp = "t" + tempVarCount++;
+                    code.add(temp + " = " + op1 + " " + op + " " + op2);
+                    operands.push(temp);
+                }
+                operators.push(ch);
+            }
+        }
+
+        while (!operators.isEmpty()) {
+            String op2 = operands.pop();
+            String op1 = operands.pop();
+            char op = operators.pop();
+            String temp = "t" + tempVarCount++;
+            code.add(temp + " = " + op1 + " " + op + " " + op2);
+            operands.push(temp);
+        }
+
+        return code;
+    }
+
+    private static boolean isOperator(char ch) {
+        return ch == '+' || ch == '-' || ch == '*' || ch == '/';
+    }
+
+    private static int precedence(char op) {
+        if (op == '+' || op == '-') return 1;
+        if (op == '*' || op == '/') return 2;
+        return 0;
+    }
+}
+
